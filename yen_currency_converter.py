@@ -1,11 +1,24 @@
+import requests
+from bs4 import BeautifulSoup
 import streamlit as st
 
 st.subheader("Yen to SGD currency converter")
 
-st.session_state.orig_yen = ""
-st.session_state.exchange_rate = "0.008634"
-st.session_state.sgd_comparison = ""
+if "orig_yen" not in st.session_state:
+    st.session_state.orig_yen = ""
+    st.session_state.sgd_comparison = ""
 
+@st.cache_data
+def get_exchange_rate():
+    try: 
+        page = requests.get('https://www.x-rates.com/calculator/?from=JPY&to=SGD&amount=1')
+        soup = BeautifulSoup(page.text, 'html.parser')
+        part2 = soup.find(class_="ccOutputRslt").get_text(strip=True)
+        rate = float(part2[:-3])
+
+        return rate
+    except: 
+        return ""
 
 def is_float(string):
     try:
@@ -21,10 +34,15 @@ def format_number(string, is_yen=False):
     return formatted
 
 
+exchange_rate = get_exchange_rate()
+if type(exchange_rate) == float:
+    st.session_state.exchange_rate = round(exchange_rate * 1.01, 6)
+
+
 tab1, tab2, tab3 = st.tabs(["  Just Convert  ", "  Include Tax  ", "  Exclude Tax  "])
 
 with tab1:
-    st.session_state.orig_yen = st.text_input("Amount (¥)", value=st.session_state.orig_yen, key="tab1_orig_yen")
+    st.session_state.orig_yen = st.text_input("Amount (¥)", key="tab1_orig_yen")
     st.session_state.exchange_rate = st.text_input("Exchange rate", value=st.session_state.exchange_rate, key="tab1_fx_rate")
 
     if len(st.session_state.orig_yen) > 0 and len(st.session_state.exchange_rate) > 0:
@@ -42,7 +60,7 @@ with tab1:
             st.error("Input is not a number!")
 
 with tab2:
-    st.session_state.orig_yen = st.text_input("Amount (¥)", value=st.session_state.orig_yen, key="tab2_orig_yen")
+    st.session_state.orig_yen = st.text_input("Amount (¥)", key="tab2_orig_yen")
     st.session_state.exchange_rate = st.text_input("Exchange rate", value=st.session_state.exchange_rate, key="tab2_fx_rate")
     tax_rate = st.radio("Tax rate",["10%", "8%"],horizontal=True, key="tab2_tax_rate")
 
@@ -92,7 +110,7 @@ with tab2:
     
 
 with tab3:
-    st.session_state.orig_yen = st.text_input("Amount (¥)", value=st.session_state.orig_yen, key="tab3_orig_yen")
+    st.session_state.orig_yen = st.text_input("Amount (¥)", key="tab3_orig_yen")
     st.session_state.exchange_rate = st.text_input("Exchange rate", value=st.session_state.exchange_rate, key="tab3_fx_rate")
     tax_rate = st.radio("Tax rate",["10%", "8%"],horizontal=True, key="tab3_tax_rate")
 
@@ -137,6 +155,8 @@ with tab3:
                                 round(perc_diff,4),
                             )
                 )
+
+            print(st.session_state.orig_yen)
 
         else:
             st.error("Input is not a number!")    
